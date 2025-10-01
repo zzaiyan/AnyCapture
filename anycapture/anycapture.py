@@ -11,36 +11,55 @@ renamed to AnyCapture to avoid conflicts with existing PyPI packages.
 
 from bytecode import Bytecode, Instr
 
+
 class get_local(object):
     cache = {}
     is_activate = False
 
-    def __init__(self, varname):
-        self.varname = varname
+    def __init__(self, *varnames):
+        """varname: tuple"""
+        self.varnames = varnames
 
     def __call__(self, func):
         if not type(self).is_activate:
             return func
 
-        type(self).cache[func.__qualname__] = []
         c = Bytecode.from_code(func.__code__)
-        extra_code = [
-                         Instr('STORE_FAST', '_res'),
-                         Instr('LOAD_FAST', self.varname),
-                         Instr('STORE_FAST', '_value'),
-                         Instr('LOAD_FAST', '_res'),
-                         Instr('LOAD_FAST', '_value'),
-                         Instr('BUILD_TUPLE', 2),
-                         Instr('STORE_FAST', '_result_tuple'),
-                         Instr('LOAD_FAST', '_result_tuple'),
-                     ]
+
+        # store return variable
+        extra_code = [Instr('STORE_FAST', '_res')]
+
+        # store local variables
+        for var_name in self.varnames:
+            type(self).cache[func.__qualname__ +
+                             '.' + var_name] = []  # create cache
+            extra_code.extend([Instr('LOAD_FAST', var_name),
+                              Instr('STORE_FAST', var_name + '_value')])
+
+        # push to TOS
+        extra_code.extend([Instr('LOAD_FAST', '_res')])
+
+        for var_name in self.varnames:
+            extra_code.extend([Instr('LOAD_FAST', var_name + '_value')])
+
+        extra_code.extend([
+            Instr('BUILD_TUPLE', 1 + len(self.varnames)),
+            Instr('STORE_FAST', '_result_tuple'),
+            Instr('LOAD_FAST', '_result_tuple')
+        ])
+
         c[-1:-1] = extra_code
         func.__code__ = c.to_code()
 
+        # callback
         def wrapper(*args, **kwargs):
-            res, values = func(*args, **kwargs)
-            type(self).cache[func.__qualname__].append(values.detach().cpu().numpy())
+            res, *values = func(*args, **kwargs)
+            for var_idx in range(len(self.varnames)):
+                value = values[var_idx].detach().cpu().numpy()
+                type(self).cache[func.__qualname__ + '.' +
+                                 self.varnames[var_idx]].append(value)
             return res
+
         return wrapper
 
     @classmethod

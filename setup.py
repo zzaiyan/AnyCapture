@@ -1,13 +1,25 @@
-import setuptools
+import re
+import os
+from setuptools import setup, find_packages
+
+
+def get_version(package):
+    """Return package version as listed in `__version__` in `init.py`."""
+    with open(os.path.join(package, '__init__.py')) as f:
+        init_py = f.read()
+    return re.search("__version__ = [\'\"]([^\'\"]+)[\'\"]", init_py).group(1)
+
+
+version = get_version('anycapture')
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-setuptools.setup(
-    name="AnyCapture",
-    version="0.0.2",
-    author="luo3300612, zzaiyan",
-    author_email="591486669@qq.com, 1@zzaiyan.com",
+setup(
+    name="anycapture",
+    version=version,
+    author="Zaiyan Zhang",
+    author_email="1@zzaiyan.com",
     description="A tool to capture local variables from any function, especially useful for visualizing attention maps in deep learning models",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -24,7 +36,7 @@ setuptools.setup(
         "Intended Audience :: Developers",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
-    packages=setuptools.find_packages(),
+    packages=find_packages(),
     python_requires=">=3.6",
     install_requires=[
         "bytecode",
