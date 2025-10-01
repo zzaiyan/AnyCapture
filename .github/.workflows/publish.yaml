@@ -1,0 +1,58 @@
+name: Publish to PyPI and GitHub Release
+
+on:
+  workflow_dispatch: # 保留手动触发
+  push:
+    tags:
+      - "v*.*.*" # 仅在推送 vX.Y.Z 格式的标签时触发
+    # 不再需要 paths 过滤，因为我们只关心标签
+
+# Add permissions here
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Build package
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload --skip-existing dist/* # Add --skip-existing flag
+
+      - name: Extract version
+        id: get_version
+        run: |
+          version=$(python setup.py --version)
+          echo "::set-output name=version::$version"
+
+      - name: Create GitHub Release # Re-add this step
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Use default GITHUB_TOKEN
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          release_name: Release v${{ steps.get_version.outputs.version }}
+          draft: false
+          prerelease: false
+          # No body or assets needed as per user request

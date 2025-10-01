@@ -1,11 +1,11 @@
-# Visualizer
-![](https://img.shields.io/badge/visualizer-v0.0.1-brightgreen)
+# AnyCapture
+![](https://img.shields.io/badge/AnyCapture-v0.0.2-brightgreen)
 ![](https://img.shields.io/badge/python-v3.6-blue)
 ![](https://img.shields.io/badge/pytorch-v%3E0.0.0-blue)
 
-Visualizer是一个辅助深度学习模型中Attention模块可视化的小工具，主要功能是帮助取出嵌套在模型深处的Attention Map
+AnyCapture是一个能够捕获任意函数中局部变量的小工具，主要功能是帮助取出嵌套在模型深处的中间结果，特别适用于深度学习模型中Attention Map的可视化
 
-## 为什么需要Visualizer?
+## 为什么需要AnyCapture?
 为了可视化Attention Map，你是否有以下苦恼
 * Return大法好：通过return将嵌套在模型深处的Attention Map一层层地返回回来，然后训练模型的时候又不得不还原
 * 全局大法好：使用全局变量在Attention函数中直接记录Attention Map，结果训练的时候忘改回来导致OOM
@@ -36,7 +36,7 @@ class Block(nn.Module):
 1. 嵌套太深，模块名不清晰，我们根本不知道我们要取的attention map怎么以model.bla.bla.bla这样一直点出来！
 2. 一般来说，Transformer中attention map每层都有一个，一个个注册实在太麻烦了
 
-所以我就思考并查找能否通过更简洁的方法来得到Attention Map（尤其是Transformer的）,而visualizer就是其中的一种，它具有以下特点
+所以我就思考并查找能否通过更简洁的方法来得到Attention Map（尤其是Transformer的）,而AnyCapture就是其中的一种，它具有以下特点
 * 精准直接，你可以取出任何变量名的模型中间结果
 * 快捷方便，同时取出Transformer类模型中的所有attention map
 * 非侵入式，你无须修改函数内的任何一行代码
@@ -54,7 +54,7 @@ python setup.py install
 比如说，我想要函数里的`attention_map`变量：
 在模型文件里，我们这么写
 ```python
-from visualizer import get_local
+from anycapture import get_local
 @get_local('attention_map')
 def your_attention_function(*args, **kwargs):
     ...
@@ -64,7 +64,7 @@ def your_attention_function(*args, **kwargs):
 ```
 然后在可视化代码里，我们这么写
 ```python
-from visualizer import get_local
+from anycapture import get_local
 get_local.activate() # 激活装饰器
 from ... import model # 被装饰的模型一定要在装饰器激活之后导入！！
 
@@ -79,7 +79,7 @@ cache = get_local.cache # ->  {'your_attention_function': [attention_map]}
 ### Usage2
 使用Pytorch时我们往往会将模块定义成一个类，此时也是一样只要装饰类内计算出attention_map的函数即可
 ```python
-from visualizer import get_local
+from anycapture import get_local
 
 class Attention(nn.Module):
     def __init__(self):
@@ -92,9 +92,9 @@ class Attention(nn.Module):
         ...
         return ...
 ```
-其他细节请参考[demo.ipynb](https://nbviewer.jupyter.org/github/luo3300612/Visualizer/blob/main/demo.ipynb)文件
+其他细节请参考[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)文件
 ## 可视化结果
-这里是部分可视化vit_small的结果，全部内容在[demo.ipynb](https://nbviewer.jupyter.org/github/luo3300612/Visualizer/blob/main/demo.ipynb)文件里
+这里是部分可视化vit_small的结果，全部内容在[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)文件里
 
 因为普通Vit所有Attention map都是在Attention.forward中计算出来的，所以只要简单地装饰一下这个函数，我们就可以同时取出vit中12层Transformer的所有Attention Map！
 
@@ -118,7 +118,16 @@ class Attention(nn.Module):
 ## 其他
 当然，其实get_local本身可以取出任何一个函数中某个局部变量的最终值，所以它应该还有其他更有趣的用途
 
+## 版权声明
+
+**原作者**: [luo3300612](https://github.com/luo3300612)  
+**原项目**: [Visualizer](https://github.com/luo3300612/Visualizer)  
+**当前维护**: [zzaiyan](https://github.com/zzaiyan)
+
+> 本项目基于原作者luo3300612的Visualizer项目进行重构和重命名，为了避免与PyPI上现有的库名称冲突，将项目重命名为AnyCapture。感谢原作者的优秀工作！
+
 ## references
+* [Visualizer by luo3300612](https://github.com/luo3300612/Visualizer)
 * [bytecode](https://blog.csdn.net/qfcy_/article/details/118890362)
 * [local track1](https://stackoverflow.com/questions/52313851/how-can-i-track-the-values-of-a-local-variable-in-python)
 * [local track2](https://stackoverflow.com/questions/19326004/access-a-function-variable-outside-the-function-without-using-global)

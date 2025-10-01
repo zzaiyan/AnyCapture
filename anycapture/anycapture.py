@@ -1,3 +1,14 @@
+"""
+AnyCapture - A tool to capture local variables from any function
+
+Original Author: luo3300612 (https://github.com/luo3300612)
+Original Project: Visualizer (https://github.com/luo3300612/Visualizer)
+Current Maintainer: zzaiyan (https://github.com/zzaiyan)
+
+This project is based on the original Visualizer project by luo3300612,
+renamed to AnyCapture to avoid conflicts with existing PyPI packages.
+"""
+
 from bytecode import Bytecode, Instr
 
 class get_local(object):

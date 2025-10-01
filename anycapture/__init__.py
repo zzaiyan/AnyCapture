@@ -1,0 +1,1 @@
+from .anycapture import get_local
