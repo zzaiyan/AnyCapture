@@ -1,11 +1,12 @@
 # AnyCapture
-![](https://img.shields.io/badge/AnyCapture-v0.0.2-brightgreen)
-![](https://img.shields.io/badge/python-v3.6-blue)
-![](https://img.shields.io/badge/pytorch-v%3E0.0.0-blue)
+[![AnyCapture](https://badge.fury.io/py/AnyCapture.svg)](https://badge.fury.io/py/AnyCapture)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Downloads](https://img.shields.io/pypi/dm/AnyCapture.svg)](https://pypi.org/project/AnyCapture/)
+[![Python Version](https://img.shields.io/pypi/pyversions/AnyCapture.svg)](https://pypi.org/project/AnyCapture/)
 
 AnyCapture是一个能够捕获任意函数中局部变量的小工具，主要功能是帮助取出嵌套在模型深处的中间结果，特别适用于深度学习模型中Attention Map的可视化
 
-## 为什么需要AnyCapture?
+### 为什么需要AnyCapture?
 为了可视化Attention Map，你是否有以下苦恼
 * Return大法好：通过return将嵌套在模型深处的Attention Map一层层地返回回来，然后训练模型的时候又不得不还原
 * 全局大法好：使用全局变量在Attention函数中直接记录Attention Map，结果训练的时候忘改回来导致OOM
@@ -42,15 +43,14 @@ class Block(nn.Module):
 * 非侵入式，你无须修改函数内的任何一行代码
 * 训练-测试一致，可视化完成后，你无须在训练时再将代码改回来
 
-## 用法
-### 安装
+### 用法
+####  安装
 ```shell
-pip install bytecode
-python setup.py install
+pip install AnyCapture
 ```
 
 安装完成后，只需要用get_local装饰一下Attention的函数，forward之后就可以拿到函数内与装饰器参数同名的局部变量啦~
-### Usage1
+####  Usage1
 比如说，我想要函数里的`attention_map`变量：
 在模型文件里，我们这么写
 ```python
@@ -76,7 +76,7 @@ cache = get_local.cache # ->  {'your_attention_function': [attention_map]}
 ```
 最终就会以字典形式存在`get_local.cache`里，其中key是你的函数名,value就是一个存储attention_map的列表
 
-### Usage2
+####  Usage2
 使用Pytorch时我们往往会将模块定义成一个类，此时也是一样只要装饰类内计算出attention_map的函数即可
 ```python
 from anycapture import get_local
@@ -93,7 +93,7 @@ class Attention(nn.Module):
         return ...
 ```
 其他细节请参考[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)文件
-## 可视化结果
+### 可视化结果
 这里是部分可视化vit_small的结果，全部内容在[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)文件里
 
 因为普通Vit所有Attention map都是在Attention.forward中计算出来的，所以只要简单地装饰一下这个函数，我们就可以同时取出vit中12层Transformer的所有Attention Map！
@@ -110,15 +110,15 @@ class Attention(nn.Module):
 
 ![grid2grid](assets/grids.png)
 
-## 注意
+### 注意
 * 想要可视化的变量在函数内部不能被后续的同名变量覆盖了，因为get_local取的是对应名称变量在函数中的**最终值**
 * 进行可视化时，get_local.activate()一定要在导入模型**前**完成，因为python装饰器是在导入时执行的
 * 训练时你不需要修改/删除任何代码，即不用删掉装饰函数的代码，因为在get_local.activate()没有执行的情况下，attention函数不会被装饰，故没有任何性能损失(同上一点，因为python装饰器是在导入时执行的)
 
-## 其他
+### 其他
 当然，其实get_local本身可以取出任何一个函数中某个局部变量的最终值，所以它应该还有其他更有趣的用途
 
-## 版权声明
+### 版权声明
 
 **原作者**: [luo3300612](https://github.com/luo3300612)  
 **原项目**: [Visualizer](https://github.com/luo3300612/Visualizer)  
@@ -126,7 +126,7 @@ class Attention(nn.Module):
 
 > 本项目基于原作者luo3300612的Visualizer项目进行重构和重命名，为了避免与PyPI上现有的库名称冲突，将项目重命名为AnyCapture。感谢原作者的优秀工作！
 
-## references
+### references
 * [Visualizer by luo3300612](https://github.com/luo3300612/Visualizer)
 * [bytecode](https://blog.csdn.net/qfcy_/article/details/118890362)
 * [local track1](https://stackoverflow.com/questions/52313851/how-can-i-track-the-values-of-a-local-variable-in-python)
