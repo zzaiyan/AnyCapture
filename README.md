@@ -10,6 +10,7 @@ AnyCapture是一个Python工具库，专门用于捕获函数执行过程中的�
 - 🚀 **多变量捕获**：支持通过装饰器同时捕获多个局部变量
 - 📦 **字典缓存**：变量以结构化字典形式存储，便于管理和访问
 - 🧹 **缓存管理**：提供clear()方法进行缓存清理
+- 🔄 **队列功能**：支持限制缓存大小，自动管理内存使用
 
 ## 背景与动机
 在深度学习模型可视化过程中，开发者经常遇到以下技术挑战：
@@ -104,80 +105,22 @@ cache = get_local.cache  # 输出格式：{'your_attention_function.attention_ma
 
 捕获结果以字典形式存储在`get_local.cache`中，键值格式为`函数名.变量名`，对应值为变量值列表。
 
-### 高级用法：多变量捕获
-
-AnyCapture支持在单个装饰器中同时捕获多个变量：
-```python
-from anycapture import get_local
-
-@get_local('attention_map', 'query', 'key', 'value')
-def your_attention_function(*args, **kwargs):
-    ...
-    attention_map = ...
-    query = ...
-    key = ...
-    value = ...
-    ...
-    return ...
-```
-
-**执行和结果获取：**
-```python
-from anycapture import get_local
-
-get_local.activate()
-from ... import model
-
-output = model(data)
-cache = get_local.cache 
-
-# 输出示例：
-# {
-#   'your_attention_function.attention_map': [attention_map],
-#   'your_attention_function.query': [query],
-#   'your_attention_function.key': [key], 
-#   'your_attention_function.value': [value]
-# }
-
-# 缓存清理
-get_local.clear()
-```
-
-### 类方法装饰应用
-
-在PyTorch开发中，通常将模块定义为类，可以直接装饰类内的相关方法：
-```python
-from anycapture import get_local
-
-class Attention(nn.Module):
-    def __init__(self):
-        ...
-    
-    @get_local('attn_map', 'scores')  # 支持同时捕获多个变量
-    def forward(self, x):
-        ...
-        attn_map = ...
-        scores = ...
-        ...
-        return ...
-```
-
-### 缓存管理
-
-AnyCapture提供了完善的缓存管理功能：
+### 基本功能
 
 ```python
-# 查看当前缓存内容
+# 查看缓存内容
 print(get_local.cache)
 
-# 清空所有缓存数据
+# 清空缓存
 get_local.clear()
 
-# 检查缓存状态
-print(len(get_local.cache))  # 输出：0
+# 队列功能：限制缓存大小
+get_local.activate(max_size=10)  # 只保留最近10次结果
+get_local.set_size(5)  # 动态调整为5个元素
 ```
 
-详细使用示例请参考[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)文件。
+详细文档请参考：[DOC.md](DOC.md) | [demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb) | [更新日志](UPDATE.md)
+
 ## 可视化案例
 
 以下展示了使用AnyCapture对Vision Transformer小型模型（vit_small）进行可视化分析的部分结果。完整案例请参考[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)。
@@ -196,51 +139,6 @@ print(len(get_local.cache))  # 输出：0
 
 ![grid2grid](assets/grids.png)
 
-## 重要事项
-
-### 技术注意点
-* **变量覆盖问题**：目标变量在函数内部不应被同名变量覆盖，`get_local`捕获的是变量在函数中的最终值
-* **激活时序要求**：执行可视化分析时，必须在模型导入前调用`get_local.activate()`，这是由Python装饰器的导入时执行机制决定的
-* **性能影响**：在未调用`get_local.activate()`的情况下，装饰器不会生效，因此对训练性能无任何影响，无需删除装饰器代码
-* **内存管理**：进行多次模型推理时，建议使用`get_local.clear()`清空缓存以控制内存占用
-
-## API文档
-
-### 核心接口
-
-#### `get_local(*varnames)`
-**功能描述：** 装饰器函数，用于标记需要捕获局部变量的目标函数
-
-**参数说明：**
-- `varnames` (str): 目标变量名称，支持多个参数
-
-**返回值：** 装饰后的函数对象
-
-#### `get_local.activate()`
-**功能描述：** 激活装饰器捕获功能
-
-**使用说明：** 必须在模型导入前调用
-
-#### `get_local.clear()`
-**功能描述：** 清空所有缓存数据
-
-**使用场景：** 多次推理前的内存清理
-
-#### `get_local.cache`
-**功能描述：** 缓存字典，存储所有捕获的变量数据
-
-**数据格式：** `{'函数限定名.变量名': [变量值列表]}`
-
-## 应用领域
-
-### 主要应用场景
-* **深度学习模型分析**：专业捕获Transformer等模型中的attention maps
-* **算法调试优化**：获取函数执行过程中的关键中间变量
-* **性能监控分析**：实时监控算法执行中的关键指标变化
-* **学术研究开发**：无侵入式提取和分析模型内部计算状态
-
-AnyCapture作为一个通用的局部变量捕获工具，在函数内部变量提取方面具有广泛的应用潜力，可支持各种创新性的应用场景开发。
-
 ## 版权信息
 
 **原始作者**: [luo3300612](https://github.com/luo3300612)  
@@ -248,11 +146,3 @@ AnyCapture作为一个通用的局部变量捕获工具，在函数内部变量�
 **当前维护者**: [zzaiyan](https://github.com/zzaiyan)
 
 > 本项目基于luo3300612的Visualizer项目进行重构和功能扩展。为避免与PyPI现有软件包的命名冲突，项目重命名为AnyCapture。特此对原作者的卓越贡献表示诚挚感谢。
-
-## 技术参考
-* [Visualizer by luo3300612](https://github.com/luo3300612/Visualizer)
-* [bytecode](https://blog.csdn.net/qfcy_/article/details/118890362)
-* [local track1](https://stackoverflow.com/questions/52313851/how-can-i-track-the-values-of-a-local-variable-in-python)
-* [local track2](https://stackoverflow.com/questions/19326004/access-a-function-variable-outside-the-function-without-using-global)
-* [decorator1](https://stackoverflow.com/questions/1367514/how-to-decorate-a-method-inside-a-class)
-* [decorator2](https://stackoverflow.com/questions/6676015/class-decorators-vs-function-decorators)
