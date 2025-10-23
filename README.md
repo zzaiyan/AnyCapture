@@ -114,16 +114,20 @@ print(get_local.cache)
 # 清空缓存
 get_local.clear()
 
+# 激活/取消激活
+get_local.activate()      # 激活捕获
+get_local.deactivate()    # 取消激活，提高性能
+
 # 队列功能：限制缓存大小
 get_local.activate(max_size=10)  # 只保留最近10次结果
 get_local.set_size(5)  # 动态调整为5个元素
 ```
 
-详细文档请参考：[DOC.md](DOC.md) | [demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb) | [更新日志](UPDATE.md)
+详细文档请参考：[DOC.md](DOC.md) | [demo.ipynb](./demo.ipynb) | [更新日志](UPDATE.md)
 
 ## 可视化案例
 
-以下展示了使用AnyCapture对Vision Transformer小型模型（vit_small）进行可视化分析的部分结果。完整案例请参考[demo.ipynb](https://nbviewer.jupyter.org/github/zzaiyan/AnyCapture/blob/main/demo.ipynb)。
+以下展示了使用AnyCapture对Vision Transformer小型模型（vit_small）进行可视化分析的部分结果。完整案例请参考 [demo.ipynb](./demo.ipynb)。
 
 由于标准Vision Transformer的所有Attention Map均在`Attention.forward`方法中计算，仅需对该方法添加装饰器，即可批量提取模型12层Transformer的全部Attention Map数据。
 

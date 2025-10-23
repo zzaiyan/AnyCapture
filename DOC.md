@@ -121,6 +121,20 @@ get_local.activate(max_size=None) # 无限容量
 
 **使用场景：** 多次推理前的内存清理
 
+#### `get_local.deactivate()`
+**功能描述：** 取消激活装饰器捕获功能
+
+**使用说明：** 取消激活后，装饰器函数将正常执行但不捕获变量。现有缓存数据将被保留。
+
+**示例：**
+```python
+get_local.activate()      # 激活
+# ... 使用装饰器函数 ...
+get_local.deactivate()    # 取消激活
+# ... 函数正常执行但不捕获变量 ...
+get_local.activate()      # 可重新激活
+```
+
 #### `get_local.set_size(max_size)`
 **功能描述：** 动态设置队列最大容量
 

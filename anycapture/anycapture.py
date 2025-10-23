@@ -10,6 +10,7 @@ renamed to AnyCapture to avoid conflicts with existing PyPI packages.
 """
 
 import warnings
+import types
 from bytecode import Bytecode, Instr
 
 
@@ -18,14 +19,31 @@ class get_local(object):
     is_activate = False
     max_size = None
 
+    @classmethod
+    def is_activated(cls):
+        """Return the current activation status"""
+        return cls.is_activate
+
     def __init__(self, *varnames):
         """Initialize with variable names to capture"""
         self.varnames = varnames
 
     def __call__(self, func):
-        if not type(self).is_activate:
-            return func
-
+        # Store the original function's code before any modification
+        original_code = func.__code__
+        original_globals = func.__globals__
+        original_defaults = func.__defaults__
+        original_closure = func.__closure__
+        
+        # Create a true copy of the original function
+        true_original_func = types.FunctionType(
+            original_code, 
+            original_globals, 
+            func.__name__, 
+            original_defaults, 
+            original_closure
+        )
+        
         c = Bytecode.from_code(func.__code__)
 
         # store return variable
@@ -33,8 +51,6 @@ class get_local(object):
 
         # store local variables
         for var_name in self.varnames:
-            type(self).cache[func.__qualname__ +
-                             '.' + var_name] = []  # create cache
             extra_code.extend([Instr('LOAD_FAST', var_name),
                               Instr('STORE_FAST', var_name + '_value')])
 
@@ -55,6 +71,10 @@ class get_local(object):
 
         # callback function
         def wrapper(*args, **kwargs):
+            if not type(self).is_activate:
+                # If deactivated, call the true original function
+                return true_original_func(*args, **kwargs)
+            
             res, *values = func(*args, **kwargs)
             for var_idx in range(len(self.varnames)):
                 if hasattr(values[var_idx], 'detach'):
@@ -63,6 +83,10 @@ class get_local(object):
                     value = values[var_idx]
                 
                 cache_key = func.__qualname__ + '.' + self.varnames[var_idx]
+                # Initialize cache if not exists
+                if cache_key not in type(self).cache:
+                    type(self).cache[cache_key] = []
+                
                 type(self).cache[cache_key].append(value)
                 
                 # Check queue size if max_size is set and positive
@@ -79,6 +103,11 @@ class get_local(object):
     def clear(cls):
         for key in cls.cache.keys():
             cls.cache[key] = []
+
+    @classmethod
+    def get_cache(cls):
+        """Return the current cache dictionary"""
+        return cls.cache
 
     @classmethod
     def set_size(cls, max_size):
@@ -133,3 +162,13 @@ class get_local(object):
         """
         cls.is_activate = True
         cls.set_size(max_size)
+
+    @classmethod
+    def deactivate(cls):
+        """
+        Deactivate decorator capture functionality
+        
+        After deactivation, decorated functions will behave normally without
+        capturing variables. Existing cache data will be preserved.
+        """
+        cls.is_activate = False
