@@ -11,6 +11,8 @@ AnyCapture是一个Python工具库，专门用于捕获函数执行过程中的�
 - 📦 **字典缓存**：变量以结构化字典形式存储，便于管理和访问
 - 🧹 **缓存管理**：提供clear()方法进行缓存清理
 - 🔄 **队列功能**：支持限制缓存大小，自动管理内存使用
+- 🛡️ **dtype兼容**：遇到bfloat16等NumPy不支持类型时，自动转换为fp32
+- 🧩 **自定义整理**：支持通过`set_collate_fn`注入自定义缓存整理逻辑
 
 ## 背景与动机
 在深度学习模型可视化过程中，开发者经常遇到以下技术挑战：
@@ -121,6 +123,28 @@ get_local.deactivate()    # 取消激活，提高性能
 # 队列功能：限制缓存大小
 get_local.activate(max_size=10)  # 只保留最近10次结果
 get_local.set_size(5)  # 动态调整为5个元素
+```
+
+### 数据类型兼容与自定义collate_fn
+
+AnyCapture默认会在缓存前对Tensor执行`detach().cpu()`；如果遇到NumPy不支持的浮点类型（如`bfloat16`），会显式调用`.float()`转换为fp32后再写入缓存。
+
+当你需要更细粒度控制（例如压缩缓存、只保留统计量、转换为特定结构）时，可以优雅地注入自定义`collate_fn`：
+
+```python
+from anycapture import get_local
+
+# 自定义：将Tensor转为fp32并仅保留均值，降低缓存体积
+def my_collate(value):
+    if hasattr(value, 'detach'):
+        tensor = value.detach().cpu().float()
+        return tensor.mean().item()
+    return value
+
+get_local.set_collate_fn(my_collate)
+
+# 恢复默认行为（内置bfloat16兼容逻辑）
+get_local.set_collate_fn(None)
 ```
 
 详细文档请参考：[DOC.md](DOC.md) | [demo.ipynb](./demo.ipynb) | [更新日志](UPDATE.md)

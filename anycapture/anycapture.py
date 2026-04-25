@@ -18,11 +18,7 @@ class get_local(object):
     cache = {}
     is_activate = False
     max_size = None
-
-    @classmethod
-    def is_activated(cls):
-        """Return the current activation status"""
-        return cls.is_activate
+    collate_fn = None
 
     def __init__(self, *varnames):
         """Initialize with variable names to capture"""
@@ -77,10 +73,7 @@ class get_local(object):
             
             res, *values = func(*args, **kwargs)
             for var_idx in range(len(self.varnames)):
-                if hasattr(values[var_idx], 'detach'):
-                    value = values[var_idx].detach().cpu().numpy()
-                else:
-                    value = values[var_idx]
+                value = type(self)._apply_collate_fn(values[var_idx])
                 
                 cache_key = func.__qualname__ + '.' + self.varnames[var_idx]
                 # Initialize cache if not exists
@@ -100,14 +93,33 @@ class get_local(object):
         return wrapper
 
     @classmethod
-    def clear(cls):
-        for key in cls.cache.keys():
-            cls.cache[key] = []
+    def activate(cls, max_size=None):
+        """
+        Activate decorator capture functionality
+        
+        Args:
+            max_size (int, optional): Maximum queue capacity. If None or non-positive,
+                                      it will be unlimited capacity. When the recorded
+                                      variables are about to exceed the maximum capacity,
+                                      the earliest variables will be removed.
+        """
+        cls.is_activate = True
+        cls.set_size(max_size)
 
     @classmethod
-    def get_cache(cls):
-        """Return the current cache dictionary"""
-        return cls.cache
+    def deactivate(cls):
+        """
+        Deactivate decorator capture functionality
+        
+        After deactivation, decorated functions will behave normally without
+        capturing variables. Existing cache data will be preserved.
+        """
+        cls.is_activate = False
+
+    @classmethod
+    def is_activated(cls):
+        """Return the current activation status"""
+        return cls.is_activate
 
     @classmethod
     def set_size(cls, max_size):
@@ -150,25 +162,67 @@ class get_local(object):
         return cls.max_size
 
     @classmethod
-    def activate(cls, max_size=None):
+    def set_collate_fn(cls, collate_fn=None):
         """
-        Activate decorator capture functionality
-        
+        Set a custom collate function for captured values.
+
         Args:
-            max_size (int, optional): Maximum queue capacity. If None or non-positive,
-                                      it will be unlimited capacity. When the recorded
-                                      variables are about to exceed the maximum capacity,
-                                      the earliest variables will be removed.
+            collate_fn (callable, optional): Function used to process captured values.
+                The signature should be: collate_fn(value) -> processed_value.
+                If None, AnyCapture will use the built-in default collate behavior.
+
+        Returns:
+            callable or None: The current custom collate function.
         """
-        cls.is_activate = True
-        cls.set_size(max_size)
+        if collate_fn is not None and not callable(collate_fn):
+            raise TypeError("collate_fn must be callable or None.")
+
+        cls.collate_fn = collate_fn
+        return cls.collate_fn
 
     @classmethod
-    def deactivate(cls):
-        """
-        Deactivate decorator capture functionality
-        
-        After deactivation, decorated functions will behave normally without
-        capturing variables. Existing cache data will be preserved.
-        """
-        cls.is_activate = False
+    def get_cache(cls):
+        """Return the current cache dictionary"""
+        return cls.cache
+
+    @classmethod
+    def clear(cls):
+        for key in cls.cache.keys():
+            cls.cache[key] = []
+
+    @classmethod
+    def _apply_collate_fn(cls, value):
+        collate_fn = cls.collate_fn if cls.collate_fn is not None else cls._default_collate_fn
+        return collate_fn(value)
+
+    @classmethod
+    def _default_collate_fn(cls, value):
+        """Convert captured values to NumPy-compatible objects."""
+        if isinstance(value, dict):
+            return {k: cls._default_collate_fn(v) for k, v in value.items()}
+
+        if isinstance(value, list):
+            return [cls._default_collate_fn(v) for v in value]
+
+        if isinstance(value, tuple):
+            return tuple(cls._default_collate_fn(v) for v in value)
+
+        if hasattr(value, 'detach') and hasattr(value, 'cpu'):
+            tensor_value = value.detach().cpu()
+
+            # NumPy often cannot handle bfloat16 directly, force fp32 for compatibility.
+            if str(getattr(tensor_value, 'dtype', '')) == 'torch.bfloat16' and hasattr(tensor_value, 'float'):
+                tensor_value = tensor_value.float()
+
+            try:
+                return tensor_value.numpy()
+            except TypeError:
+                if (
+                    hasattr(tensor_value, 'is_floating_point')
+                    and tensor_value.is_floating_point()
+                    and hasattr(tensor_value, 'float')
+                ):
+                    return tensor_value.float().numpy()
+                raise
+
+        return value

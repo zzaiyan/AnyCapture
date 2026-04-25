@@ -79,7 +79,24 @@ get_local.activate(max_size=10)  # 只保留最近10次的结果
 
 # 动态调整队列大小
 get_local.set_size(5)  # 运行时调整为5个元素
+
+# 自定义缓存整理函数（可选）
+def my_collate(value):
+    if hasattr(value, 'detach'):
+        # 显式转为fp32，避免bfloat16等类型在numpy转换时报错
+        return value.detach().cpu().float().numpy()
+    return value
+
+get_local.set_collate_fn(my_collate)
+
+# 恢复默认整理策略
+get_local.set_collate_fn(None)
 ```
+
+默认情况下，AnyCapture会在缓存前执行内置整理逻辑：
+- 对Tensor执行`detach().cpu()`
+- 对`bfloat16`等NumPy不兼容浮点类型显式调用`.float()`转换为fp32
+- 最终转换为NumPy对象存入缓存
 
 ## 重要事项
 
@@ -148,6 +165,28 @@ get_local.activate()      # 可重新激活
 get_local.set_size(5)     # 设置容量为5，返回5
 get_local.set_size(0)     # 设置为无限容量，返回None  
 get_local.set_size("abc") # 无效输入，返回None
+```
+
+#### `get_local.set_collate_fn(collate_fn=None)`
+**功能描述：** 设置自定义缓存整理函数，用于控制变量写入缓存前的转换逻辑
+
+**参数说明：**
+- `collate_fn` (callable, optional): 自定义整理函数，签名为`collate_fn(value) -> processed_value`。传入`None`可恢复默认整理策略。
+
+**默认行为：**
+- 自动处理Tensor到NumPy的转换
+- 对`bfloat16`等NumPy不兼容类型显式调用`.float()`转换为fp32
+
+**示例：**
+```python
+def my_collate(value):
+    if hasattr(value, 'detach'):
+        tensor = value.detach().cpu().float()
+        return tensor.mean().item()
+    return value
+
+get_local.set_collate_fn(my_collate)
+get_local.set_collate_fn(None)  # 恢复默认行为
 ```
 
 #### `get_local.cache`
